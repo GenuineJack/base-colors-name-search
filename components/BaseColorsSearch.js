@@ -5,17 +5,27 @@ export default function BaseColorsSearch() {
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   const searchColors = async (term) => {
     if (!term) return;
     setIsLoading(true);
+    setError(null);
     
     try {
+      console.log('Searching for:', term); // Debug log
       const response = await fetch(`/api/colors?search=${encodeURIComponent(term)}`);
       const data = await response.json();
-      setSearchResults(data);
+      console.log('Response data:', data); // Debug log
+      
+      if (response.ok) {
+        setSearchResults(data);
+      } else {
+        setError(data.error || 'Failed to search colors');
+      }
     } catch (error) {
       console.error('Search failed:', error);
+      setError('Failed to search colors');
     } finally {
       setIsLoading(false);
     }
@@ -27,9 +37,26 @@ export default function BaseColorsSearch() {
   };
 
   const handleRandomColor = async () => {
-    const response = await fetch('/api/colors/random');
-    const data = await response.json();
-    setSearchResults([data]);
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      console.log('Fetching random color'); // Debug log
+      const response = await fetch('/api/colors/random');
+      const data = await response.json();
+      console.log('Random color data:', data); // Debug log
+      
+      if (response.ok && data) {
+        setSearchResults([data]);
+      } else {
+        setError('Failed to get random color');
+      }
+    } catch (error) {
+      console.error('Random color failed:', error);
+      setError('Failed to get random color');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -80,6 +107,12 @@ export default function BaseColorsSearch() {
             I'm Feeling Colorful
           </button>
         </div>
+
+        {error && (
+          <div className="mt-8 text-center text-red-600">
+            {error}
+          </div>
+        )}
 
         {isLoading ? (
           <div className="mt-8 text-center text-gray-600">Searching...</div>

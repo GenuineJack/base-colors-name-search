@@ -1,34 +1,51 @@
 import { BaseColorsReader } from '../../../lib/contractInteraction';
 
+export const config = {
+  maxDuration: 300 // Extend function timeout to 5 minutes
+};
+
 export default async function handler(req, res) {
+  // Add CORS headers
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET');
+  
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  const timeoutPromise = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error('Request timeout')), 8000)
+  );
+
   try {
-    console.log('API called with search term:', req.query.search);
+    console.log('Search request received:', req.query.search);
     const reader = new BaseColorsReader();
     
-    if (!reader.searchColors) {
-      console.error('searchColors method missing from reader');
-      throw new Error('Search method not available');
-    }
+    // Race between the search and timeout
+    const results = await Promise.race([
+      reader.searchColors(req.query.search || ''),
+      timeoutPromise
+    ]);
 
-    console.log('Starting search...');
-    const results = await reader.searchColors(req.query.search || '');
-    console.log('Search completed with results:', results);
-    
-    res.json(results);
+    console.log('Search completed, found results:', results?.length || 0);
+    res.json(results || []);
   } catch (error) {
-    console.error('Detailed API Error:', {
+    console.error('API Error:', {
       message: error.message,
-      stack: error.stack,
-      cause: error.cause
+      name: error.name,
+      stack: error.stack
     });
-    res.status(500).json({ 
-      error: 'Failed to search colors',
-      details: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
-    });
+
+    if (error.message === 'Request timeout') {
+      res.status(504).json({
+        error: 'Search took too long to complete',
+        message: 'Please try a more specific search term'
+      });
+    } else {
+      res.status(500).json({
+        error: 'Failed to search colors',
+        message: error.message
+      });
+    }
   }
 }

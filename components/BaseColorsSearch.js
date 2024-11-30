@@ -1,149 +1,130 @@
 import React, { useState } from 'react';
-import { Search, Palette } from 'lucide-react';
+import { ethers } from 'ethers';
+import { useNavigate } from 'react-router-dom';
 
-export default function BaseColorsSearch() {
+// Import the Base Colors contract ABI and address
+import baseColorsABI from './baseColorsABI.json';
+const baseColorsAddress = '0x123456789abcdef';
+
+const BaseColorSearch = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const navigate = useNavigate();
 
-  const searchColors = async (term) => {
-    if (!term) return;
-    setIsLoading(true);
-    setError(null);
-    
+  const handleSearch = async () => {
     try {
-      console.log('Searching for:', term); // Debug log
-      const response = await fetch(`/api/colors?search=${encodeURIComponent(term)}`);
-      const data = await response.json();
-      console.log('Response data:', data); // Debug log
-      
-      if (response.ok) {
-        setSearchResults(data);
-      } else {
-        setError(data.error || 'Failed to search colors');
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const baseColorsContract = new ethers.Contract(baseColorsAddress, baseColorsABI, provider);
+
+      // Search by named color
+      let colorNames = await baseColorsContract.getColorNames();
+      let matchingColors = colorNames.filter(name => name.toLowerCase().includes(searchTerm.toLowerCase()));
+
+      // Search by hex code
+      if (matchingColors.length === 0 && searchTerm.startsWith('#')) {
+        let hexColors = await baseColorsContract.getColorHexCodes();
+        matchingColors = hexColors.filter(hex => hex.toLowerCase().includes(searchTerm.toLowerCase()));
       }
+
+      // Fetch owner information for each matching color
+      const results = await Promise.all(matchingColors.map(async (colorName) => {
+        const tokenId = await baseColorsContract.getTokenIdByName(colorName);
+        const owner = await baseColorsContract.ownerOf(tokenId);
+        return {
+          name: colorName,
+          hex: await baseColorsContract.getColorHexByName(colorName),
+          owner: owner,
+          isAvailable: owner === ethers.constants.AddressZero
+        };
+      }));
+
+      setSearchResults(results);
     } catch (error) {
-      console.error('Search failed:', error);
-      setError('Failed to search colors');
-    } finally {
-      setIsLoading(false);
+      console.error('Error searching for colors:', error);
     }
   };
 
-  const handleSearch = (e) => {
-    e.preventDefault();
-    searchColors(searchTerm);
-  };
-
   const handleRandomColor = async () => {
-    setIsLoading(true);
-    setError(null);
-    
     try {
-      console.log('Fetching random color'); // Debug log
-      const response = await fetch('/api/colors/random');
-      const data = await response.json();
-      console.log('Random color data:', data); // Debug log
-      
-      if (response.ok && data) {
-        setSearchResults([data]);
-      } else {
-        setError('Failed to get random color');
-      }
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const baseColorsContract = new ethers.Contract(baseColorsAddress, baseColorsABI, provider);
+
+      // Get all named colors
+      let colorNames = await baseColorsContract.getColorNames();
+
+      // Select a random named color
+      const randomIndex = Math.floor(Math.random() * colorNames.length);
+      const randomColorName = colorNames[randomIndex];
+
+      // Fetch the hex code and owner information for the random color
+      const tokenId = await baseColorsContract.getTokenIdByName(randomColorName);
+      const owner = await baseColorsContract.ownerOf(tokenId);
+      const hex = await baseColorsContract.getColorHexByName(randomColorName);
+
+      // Navigate to the random color's details page
+      navigate(`/color/${randomColorName}`, {
+        state: {
+          name: randomColorName,
+          hex: hex,
+          owner: owner,
+          isAvailable: owner === ethers.constants.AddressZero
+        }
+      });
     } catch (error) {
-      console.error('Random color failed:', error);
-      setError('Failed to get random color');
-    } finally {
-      setIsLoading(false);
+      console.error('Error getting random color:', error);
     }
   };
 
   return (
-    <div className="min-h-screen bg-white flex flex-col items-center pt-20">
-      <div className="flex items-center mb-8">
-        <Palette className="w-12 h-12 mr-3 text-blue-500" />
-        <h1 className="text-4xl font-semibold">
-          <span className="text-blue-500">B</span>
-          <span className="text-red-500">a</span>
-          <span className="text-yellow-500">s</span>
-          <span className="text-blue-500">e</span>
-          <span className="text-green-500">C</span>
-          <span className="text-red-500">o</span>
-          <span className="text-blue-500">l</span>
-          <span className="text-yellow-500">o</span>
-          <span className="text-green-500">r</span>
-          <span className="text-red-500">s</span>
-        </h1>
+    <div className="p-4">
+      <h1 className="text-2xl font-bold mb-4">Base Colors Name Search</h1>
+      <div className="flex mb-4">
+        <input
+          type="text"
+          className="border border-gray-300 rounded-md px-3 py-2 flex-1 mr-2"
+          placeholder="Search by name or hex code"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+        <button
+          className="bg-blue-500 hover:bg-blue-600 text-white font-medium px-4 py-2 rounded-md"
+          onClick={handleSearch}
+        >
+          Search
+        </button>
       </div>
-
-      <div className="w-full max-w-2xl px-4">
-        <form onSubmit={handleSearch} className="w-full">
-          <div className="relative">
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-5 py-3 border border-gray-200 rounded-full focus:outline-none focus:border-gray-300 focus:ring-2 focus:ring-gray-100 pr-12"
-              placeholder="Search for color names..."
-            />
-            <button type="submit" className="absolute right-4 top-1/2 transform -translate-y-1/2">
-              <Search className="w-5 h-5 text-gray-400" />
-            </button>
+      <div className="mb-4">
+        <button
+          className="bg-green-500 hover:bg-green-600 text-white font-medium px-4 py-2 rounded-md"
+          onClick={handleRandomColor}
+        >
+          I'm Feeling Colorful
+        </button>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+        {searchResults.map((result, index) => (
+          <div key={index} className="border border-gray-300 rounded-md p-4">
+            <h2 className="text-lg font-medium mb-2">{result.name}</h2>
+            <p className="mb-2">Hex: {result.hex}</p>
+            {result.isAvailable ? (
+              <p className="mb-2">
+                <a href={`https://basecolors.com/color/${result.name}`} target="_blank" rel="noopener noreferrer">
+                  This Color is Available
+                </a>
+              </p>
+            ) : (
+              <p className="mb-2">
+                Owned By:{' '}
+                <a href={`https://opensea.io/assets/${baseColorsAddress}/${await baseColorsContract.getTokenIdByName(result.name)}`} target="_blank" rel="noopener noreferrer">
+                  {result.owner}
+                </a>
+              </p>
+            )}
           </div>
-        </form>
-
-        <div className="flex justify-center mt-6 space-x-3">
-          <button 
-            onClick={handleSearch}
-            className="px-4 py-2 bg-gray-50 text-sm text-gray-700 hover:border-gray-300 rounded"
-          >
-            Base Colors Search
-          </button>
-          <button 
-            onClick={handleRandomColor}
-            className="px-4 py-2 bg-gray-50 text-sm text-gray-700 hover:border-gray-300 rounded"
-          >
-            I'm Feeling Colorful
-          </button>
-        </div>
-
-        {error && (
-          <div className="mt-8 text-center text-red-600">
-            {error}
-          </div>
-        )}
-
-        {isLoading ? (
-          <div className="mt-8 text-center text-gray-600">Searching...</div>
-        ) : searchResults.length > 0 ? (
-          <div className="mt-8 space-y-4">
-            {searchResults.map((result) => (
-              <div 
-                key={result.tokenId} 
-                className="flex items-center p-4 border rounded-lg hover:shadow-md transition-shadow"
-              >
-                <div 
-                  className="w-12 h-12 rounded-md mr-4" 
-                  style={{ backgroundColor: result.color }} 
-                />
-                <div>
-                  <h3 className="text-lg font-medium text-gray-900">
-                    {result.name}
-                  </h3>
-                  <p className="text-sm text-gray-500">
-                    {result.color}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : searchTerm && (
-          <div className="mt-8 text-center text-gray-600">
-            No colors found matching "{searchTerm}"
-          </div>
-        )}
+        ))}
       </div>
     </div>
   );
-}
+};
+
+export default BaseColorSearch;

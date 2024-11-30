@@ -6,13 +6,14 @@ export default async function handler(req, res) {
   }
 
   try {
-    console.log('Search term:', req.query.search); // Debug log
     const reader = new BaseColorsReader();
     const results = await reader.searchColors(req.query.search || '');
-    console.log('Search results:', results); // Debug log
     res.json(results);
   } catch (error) {
-    console.error('API Error:', error); // Debug log
-    res.status(500).json({ error: error.message });
+    console.error('API Error:', error);
+    res.status(500).json({ 
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 }

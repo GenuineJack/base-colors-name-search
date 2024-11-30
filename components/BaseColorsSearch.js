@@ -27,6 +27,7 @@ const BaseColorSearch = () => {
               hex,
               owner,
               isAvailable: owner === ethers.constants.AddressZero,
+              openSeaLink: `https://opensea.io/assets/${baseColorsAddress}/${tokenId}`,
             };
           })
         );
@@ -94,11 +95,7 @@ const BaseColorSearch = () => {
             ) : (
               <p className="mb-2">
                 Owned By:{' '}
-                
-                  href={`https://opensea.io/assets/${baseColorsAddress}/${await baseColorsContract.getTokenIdByName(result.name)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
+                <a href={result.openSeaLink} target="_blank" rel="noopener noreferrer">
                   {result.owner}
                 </a>
               </p>

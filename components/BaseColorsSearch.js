@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 import { useNavigate } from 'react-router-dom';
 
@@ -11,68 +11,48 @@ const BaseColorSearch = () => {
   const [searchResults, setSearchResults] = useState([]);
   const navigate = useNavigate();
 
-  const handleSearch = async () => {
-    try {
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
-      const baseColorsContract = new ethers.Contract(baseColorsAddress, baseColorsABI, provider);
-
-      // Search by named color
-      let colorNames = await baseColorsContract.getColorNames();
-      let matchingColors = colorNames.filter(name => name.toLowerCase().includes(searchTerm.toLowerCase()));
-
-      // Search by hex code
-      if (matchingColors.length === 0 && searchTerm.startsWith('#')) {
-        let hexColors = await baseColorsContract.getColorHexCodes();
-        matchingColors = hexColors.filter(hex => hex.toLowerCase().includes(searchTerm.toLowerCase()));
+  useEffect(() => {
+    // Load all named colors on component mount
+    const fetchNamedColors = async () => {
+      try {
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        const baseColorsContract = new ethers.Contract(baseColorsAddress, baseColorsABI, provider);
+        const colorNames = await baseColorsContract.getColorNames();
+        const colorDetails = await Promise.all(
+          colorNames.map(async (name) => {
+            const tokenId = await baseColorsContract.getTokenIdByName(name);
+            const owner = await baseColorsContract.ownerOf(tokenId);
+            const hex = await baseColorsContract.getColorHexByName(name);
+            return {
+              name,
+              hex,
+              owner,
+              isAvailable: owner === ethers.constants.AddressZero,
+            };
+          })
+        );
+        setSearchResults(colorDetails);
+      } catch (error) {
+        console.error('Error fetching named colors:', error);
       }
+    };
+    fetchNamedColors();
+  }, []);
 
-      // Fetch owner information for each matching color
-      const results = await Promise.all(matchingColors.map(async (colorName) => {
-        const tokenId = await baseColorsContract.getTokenIdByName(colorName);
-        const owner = await baseColorsContract.ownerOf(tokenId);
-        return {
-          name: colorName,
-          hex: await baseColorsContract.getColorHexByName(colorName),
-          owner: owner,
-          isAvailable: owner === ethers.constants.AddressZero
-        };
-      }));
-
-      setSearchResults(results);
-    } catch (error) {
-      console.error('Error searching for colors:', error);
-    }
+  const handleSearch = () => {
+    const filteredResults = searchResults.filter((result) =>
+      result.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      result.hex.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    setSearchResults(filteredResults);
   };
 
-  const handleRandomColor = async () => {
-    try {
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
-      const baseColorsContract = new ethers.Contract(baseColorsAddress, baseColorsABI, provider);
-
-      // Get all named colors
-      let colorNames = await baseColorsContract.getColorNames();
-
-      // Select a random named color
-      const randomIndex = Math.floor(Math.random() * colorNames.length);
-      const randomColorName = colorNames[randomIndex];
-
-      // Fetch the hex code and owner information for the random color
-      const tokenId = await baseColorsContract.getTokenIdByName(randomColorName);
-      const owner = await baseColorsContract.ownerOf(tokenId);
-      const hex = await baseColorsContract.getColorHexByName(randomColorName);
-
-      // Navigate to the random color's details page
-      navigate(`/color/${randomColorName}`, {
-        state: {
-          name: randomColorName,
-          hex: hex,
-          owner: owner,
-          isAvailable: owner === ethers.constants.AddressZero
-        }
-      });
-    } catch (error) {
-      console.error('Error getting random color:', error);
-    }
+  const handleRandomColor = () => {
+    const randomIndex = Math.floor(Math.random() * searchResults.length);
+    const randomColor = searchResults[randomIndex];
+    navigate(`/color/${randomColor.name}`, {
+      state: randomColor,
+    });
   };
 
   return (

@@ -27,31 +27,39 @@ export default function BaseColorsSearch() {
   };
 
   const handleRandomColor = async () => {
-    const response = await fetch('/api/colors/random');
-    const data = await response.json();
-    setSearchResults([data]);
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/colors/random');
+      const data = await response.json();
+      setSearchResults([data]);
+    } catch (error) {
+      console.error('Random color failed:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <div className="min-h-screen bg-white flex flex-col items-center pt-20">
       <div className="flex items-center mb-8">
-  <Palette className="w-12 h-12 mr-3 text-blue-500" />
-  <h1 className="text-4xl font-semibold">
-    <span className="text-blue-500">B</span>
-    <span className="text-red-500">a</span>
-    <span className="text-yellow-500">s</span>
-    <span className="text-blue-500">e</span>
-    <span className="mx-2">·</span>
-    <span className="text-green-500">C</span>
-    <span className="text-red-500">o</span>
-    <span className="text-blue-500">l</span>
-    <span className="text-yellow-500">o</span>
-    <span className="text-green-500">r</span>
-    <span className="text-red-500">s</span>
-    <span className="mx-2">·</span>
-    <span className="text-gray-700">Search</span>
-  </h1>
-</div>
+        <Palette className="w-12 h-12 mr-3 text-blue-500" />
+        <h1 className="text-4xl font-semibold">
+          <span className="text-blue-500">B</span>
+          <span className="text-red-500">a</span>
+          <span className="text-yellow-500">s</span>
+          <span className="text-blue-500">e</span>
+          <span className="text-green-500"> C</span>
+          <span className="text-red-500">o</span>
+          <span className="text-blue-500">l</span>
+          <span className="text-yellow-500">o</span>
+          <span className="text-green-500">r</span>
+          <span className="text-red-500">s</span>
+          <span className="text-blue-500"> S</span>
+          <span className="text-red-500">e</span>
+          <span className="text-yellow-500">a</span>
+          <span className="text-green-500">r</span>
+          <span className="text-blue-500">c</span>
+          <span className="text-red-500">h</span>
         </h1>
       </div>
 
@@ -93,19 +101,41 @@ export default function BaseColorsSearch() {
             {searchResults.map((result) => (
               <div 
                 key={result.tokenId} 
-                className="flex items-center p-4 border rounded-lg hover:shadow-md transition-shadow"
+                className="p-6 bg-white rounded-lg shadow hover:shadow-md transition-shadow border border-gray-100"
               >
-                <div 
-                  className="w-12 h-12 rounded-md mr-4" 
-                  style={{ backgroundColor: result.color }} 
-                />
-                <div>
-                  <h3 className="text-lg font-medium text-gray-900">
-                    {result.name}
-                  </h3>
-                  <p className="text-sm text-gray-500">
-                    {result.color}
-                  </p>
+                <div className="flex items-center space-x-4">
+                  <div 
+                    className="w-16 h-16 rounded-lg shadow-inner" 
+                    style={{ backgroundColor: result.hexColor }} 
+                  />
+                  <div className="flex-1">
+                    <h3 className="text-xl font-semibold">
+                      {result.name || result.hexColor}
+                    </h3>
+                    <p className="text-gray-500 text-sm">{result.hexColor}</p>
+                    {result.owner ? (
+                      <div className="mt-2 text-sm">
+                        Owned by: 
+                        <a 
+                          href={result.openseaUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="ml-1 text-blue-500 hover:text-blue-600"
+                        >
+                          {`${result.owner.slice(0, 6)}...${result.owner.slice(-4)}`}
+                        </a>
+                      </div>
+                    ) : (
+                      <a 
+                        href={result.baseColorsUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-2 inline-flex items-center text-sm text-blue-500 hover:text-blue-600"
+                      >
+                        Available on BaseColors <ExternalLink className="w-4 h-4 ml-1" />
+                      </a>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}

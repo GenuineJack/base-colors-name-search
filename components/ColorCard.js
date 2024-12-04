@@ -1,42 +1,44 @@
 import { ExternalLink } from 'lucide-react';
 
 export default function ColorCard({ color }) {
-  const shortAddress = addr => 
-    `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+  const shortAddr = addr => `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 
   return (
-    <div className="flex items-center p-4 border rounded-lg hover:shadow-md transition-all">
-      <div 
-        className="w-12 h-12 rounded-md mr-4" 
-        style={{ backgroundColor: color.hexColor }}
-      />
-      <div className="flex-grow">
-        <h3 className="text-lg font-medium">
-          {color.name || color.hexColor}
-        </h3>
-        <div className="flex space-x-4 text-sm text-gray-500">
-          <a 
-            href={color.openseaUrl} 
-            target="_blank" 
-            rel="noopener noreferrer" 
-            className="flex items-center hover:text-blue-500"
-          >
-            OpenSea <ExternalLink className="w-4 h-4 ml-1" />
-          </a>
-          <a 
-            href={color.baseColorsUrl} 
-            target="_blank" 
-            rel="noopener noreferrer" 
-            className="flex items-center hover:text-blue-500"
-          >
-            BaseColors <ExternalLink className="w-4 h-4 ml-1" />
-          </a>
+    <div className="p-6 bg-white rounded-lg shadow hover:shadow-md transition-shadow border border-gray-100">
+      <div className="flex items-center space-x-4">
+        <div 
+          className="w-16 h-16 rounded-lg shadow-inner" 
+          style={{ backgroundColor: color.hexColor }}
+        />
+        <div className="flex-1">
+          <h3 className="text-xl font-semibold">
+            {color.name || color.hexColor}
+          </h3>
+          <p className="text-gray-500 text-sm">{color.hexColor}</p>
+          
+          {color.owner ? (
+            <div className="mt-2 text-sm">
+              Owned by: 
+              <a 
+                href={color.openseaUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="ml-1 text-blue-500 hover:text-blue-600"
+              >
+                {shortAddr(color.owner)}
+              </a>
+            </div>
+          ) : (
+            <a 
+              href={color.baseColorsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2 inline-flex items-center text-sm text-blue-500 hover:text-blue-600"
+            >
+              Available on BaseColors <ExternalLink className="w-4 h-4 ml-1" />
+            </a>
+          )}
         </div>
-        <p className="mt-1">
-          {color.owner ? 
-            `Owned by: ${shortAddress(color.owner)}` : 
-            'Color is available'}
-        </p>
       </div>
     </div>
   );

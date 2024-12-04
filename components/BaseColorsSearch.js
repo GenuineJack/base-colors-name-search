@@ -35,18 +35,23 @@ export default function BaseColorsSearch() {
   return (
     <div className="min-h-screen bg-white flex flex-col items-center pt-20">
       <div className="flex items-center mb-8">
-        <Palette className="w-12 h-12 mr-3 text-blue-500" />
-        <h1 className="text-4xl font-semibold">
-          <span className="text-blue-500">B</span>
-          <span className="text-red-500">a</span>
-          <span className="text-yellow-500">s</span>
-          <span className="text-blue-500">e</span>
-          <span className="text-green-500">C</span>
-          <span className="text-red-500">o</span>
-          <span className="text-blue-500">l</span>
-          <span className="text-yellow-500">o</span>
-          <span className="text-green-500">r</span>
-          <span className="text-red-500">s</span>
+  <Palette className="w-12 h-12 mr-3 text-blue-500" />
+  <h1 className="text-4xl font-semibold">
+    <span className="text-blue-500">B</span>
+    <span className="text-red-500">a</span>
+    <span className="text-yellow-500">s</span>
+    <span className="text-blue-500">e</span>
+    <span className="mx-2">·</span>
+    <span className="text-green-500">C</span>
+    <span className="text-red-500">o</span>
+    <span className="text-blue-500">l</span>
+    <span className="text-yellow-500">o</span>
+    <span className="text-green-500">r</span>
+    <span className="text-red-500">s</span>
+    <span className="mx-2">·</span>
+    <span className="text-gray-700">Search</span>
+  </h1>
+</div>
         </h1>
       </div>
 

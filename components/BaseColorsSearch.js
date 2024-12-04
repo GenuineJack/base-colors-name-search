@@ -1,110 +1,115 @@
-import React, { useState, useEffect } from 'react';
-import { ethers } from 'ethers';
-import { useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Search, Palette, ExternalLink } from 'lucide-react';
 
-// Import the Base Colors contract ABI and address
-import baseColorsABI from './baseColorsABI.json';
-const baseColorsAddress = '0x123456789abcdef';
-
-const BaseColorSearch = () => {
+export default function BaseColorsSearch() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
-  const navigate = useNavigate();
+  const [results, setResults] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  const [page, setPage] = useState(0);
 
-  useEffect(() => {
-    const fetchNamedColors = async () => {
-      try {
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        const baseColorsContract = new ethers.Contract(baseColorsAddress, baseColorsABI, provider);
-        const colorNames = await baseColorsContract.getColorNames();
-        const colorDetails = await Promise.all(
-          colorNames.map(async (name) => {
-            const tokenId = await baseColorsContract.getTokenIdByName(name);
-            const owner = await baseColorsContract.ownerOf(tokenId);
-            const hex = await baseColorsContract.getColorHexByName(name);
-            return {
-              name,
-              hex,
-              owner,
-              isAvailable: owner === ethers.constants.AddressZero,
-              openSeaLink: `https://opensea.io/assets/${baseColorsAddress}/${tokenId}`,
-            };
-          })
-        );
-        setSearchResults(colorDetails);
-      } catch (error) {
-        console.error('Error fetching named colors:', error);
-      }
-    };
-    fetchNamedColors();
-  }, []);
-
-  const handleSearch = () => {
-    const filteredResults = searchResults.filter((result) =>
-      result.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      result.hex.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-    setSearchResults(filteredResults);
+  const searchColors = async (term, newSearch = true) => {
+    if (newSearch) {
+      setPage(0);
+      setResults([]);
+    }
+    
+    setIsLoading(true);
+    try {
+      const response = await fetch(`/api/colors?query=${encodeURIComponent(term)}&page=${newSearch ? 0 : page}`);
+      const data = await response.json();
+      setResults(newSearch ? data.colors : [...results, ...data.colors]);
+      setHasMore(data.hasMore);
+      if (!newSearch) setPage(page + 1);
+    } catch (error) {
+      console.error('Search failed:', error);
+    }
+    setIsLoading(false);
   };
 
-  const handleRandomColor = () => {
-    const randomIndex = Math.floor(Math.random() * searchResults.length);
-    const randomColor = searchResults[randomIndex];
-    navigate(`/color/${randomColor.name}`, {
-      state: randomColor,
-    });
+  const handleSearch = (e) => {
+    e.preventDefault();
+    searchColors(searchTerm);
+  };
+
+  const handleRandomColor = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/colors/random');
+      const color = await response.json();
+      setResults([color]);
+      setHasMore(false);
+    } catch (error) {
+      console.error('Random color failed:', error);
+    }
+    setIsLoading(false);
   };
 
   return (
-    <div className="p-4">
-      <h1 className="text-2xl font-bold mb-4">Base Colors Name Search</h1>
-      <div className="flex mb-4">
-        <input
-          type="text"
-          className="border border-gray-300 rounded-md px-3 py-2 flex-1 mr-2"
-          placeholder="Search by name or hex code"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
-        <button
-          className="bg-blue-500 hover:bg-blue-600 text-white font-medium px-4 py-2 rounded-md"
-          onClick={handleSearch}
-        >
-          Search
-        </button>
+    <div className="min-h-screen bg-white flex flex-col items-center pt-20">
+      <div className="flex items-center mb-8">
+        <Palette className="w-12 h-12 mr-3 text-blue-500" />
+        <h1 className="text-4xl font-semibold">Base Colors Search</h1>
       </div>
-      <div className="mb-4">
-        <button
-          className="bg-green-500 hover:bg-green-600 text-white font-medium px-4 py-2 rounded-md"
-          onClick={handleRandomColor}
-        >
-          I'm Feeling Colorful
-        </button>
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-        {searchResults.map((result, index) => (
-          <div key={index} className="border border-gray-300 rounded-md p-4">
-            <h2 className="text-lg font-medium mb-2">{result.name}</h2>
-            <p className="mb-2">Hex: {result.hex}</p>
-            {result.isAvailable ? (
-              <p className="mb-2">
-                <a href={`https://basecolors.com/color/${result.name}`} target="_blank" rel="noopener noreferrer">
-                  This Color is Available
-                </a>
-              </p>
-            ) : (
-              <p className="mb-2">
-                Owned By:{' '}
-                <a href={result.openSeaLink} target="_blank" rel="noopener noreferrer">
-                  {result.owner}
-                </a>
-              </p>
-            )}
+
+      <div className="w-full max-w-2xl px-4">
+        <form onSubmit={handleSearch} className="w-full">
+          <div className="relative">
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full px-5 py-3 border border-gray-200 rounded-full focus:outline-none focus:border-gray-300 focus:ring-2 focus:ring-gray-100 pr-12"
+              placeholder="Search by name or hex code..."
+            />
+            <button type="submit" className="absolute right-4 top-1/2 transform -translate-y-1/2">
+              <Search className="w-5 h-5 text-gray-400" />
+            </button>
           </div>
-        ))}
+        </form>
+
+        <div className="flex justify-center mt-6 space-x-3">
+          <button onClick={handleSearch} className="px-4 py-2 bg-gray-50 text-sm text-gray-700 hover:border-gray-300 rounded">
+            Search
+          </button>
+          <button onClick={handleRandomColor} className="px-4 py-2 bg-gray-50 text-sm text-gray-700 hover:border-gray-300 rounded">
+            I'm Feeling Colorful
+          </button>
+        </div>
+
+        {isLoading && <div className="mt-8 text-center">Loading...</div>}
+
+        <div className="mt-8 space-y-4">
+          {results.map((color) => (
+            <div key={color.tokenId} className="flex items-center p-4 border rounded-lg hover:shadow-md">
+              <div className="w-12 h-12 rounded-md mr-4" style={{ backgroundColor: color.hexColor }} />
+              <div className="flex-grow">
+                <h3 className="text-lg font-medium">{color.name || color.hexColor}</h3>
+                <div className="flex space-x-4 text-sm text-gray-500">
+                  <a href={color.openseaUrl} target="_blank" rel="noopener noreferrer" className="flex items-center hover:text-blue-500">
+                    View on OpenSea <ExternalLink className="w-4 h-4 ml-1" />
+                  </a>
+                  <a href={color.baseColorsUrl} target="_blank" rel="noopener noreferrer" className="flex items-center hover:text-blue-500">
+                    View on BaseColors <ExternalLink className="w-4 h-4 ml-1" />
+                  </a>
+                </div>
+                <p className="mt-1">
+                  {color.owner ? `Owned by: ${color.owner}` : 'Color is available'}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {hasMore && !isLoading && (
+          <button
+            onClick={() => searchColors(searchTerm, false)}
+            className="mt-4 w-full py-2 bg-gray-50 text-sm text-gray-700 hover:bg-gray-100 rounded"
+          >
+            Load More
+          </button>
+        )}
       </div>
     </div>
   );
-};
-
-export default BaseColorSearch;
+}
